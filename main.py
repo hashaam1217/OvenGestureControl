@@ -1,5 +1,13 @@
 import cv2
 import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
+
+#Create an HandLandmarker object.
+base_options = python.BaseOptions(model_asset_path='hand_landmarker.task')
+options = vision.HandLandmarkerOptions(base_options=base_options,
+                                       num_hands=2)
+detector = vision.HandLandmarker.create_from_options(options)
 
 def main():
     # Initialize MediaPipe Hands
@@ -23,11 +31,14 @@ def main():
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
                 # Draw hand landmarks
-                for landmark in hand_landmarks.landmark:
-                    x, y = int(landmark.x * frame.shape[1]), int(landmark.y * frame.shape[0])
-                    cv2.circle(frame, (x, y), 5, (255, 0, 0), -1)  # Draw a blue circle
-
-            # Get recognized hand gestures (you can customize this part)
+#                for landmark in hand_landmarks.landmark:
+#                    x, y = int(landmark.x * frame.shape[1]), int(landmark.y * frame.shape[0])
+#                    cv2.circle(frame, (x, y), 5, (255, 0, 0), -1)  # Draw a blue circle
+                 for landmark in hand_landmarks.landmark:
+                     x, y, z = int(landmark.x * frame.shape[1]), int(landmark.y * frame.shape[0]), landmark.z
+                     # Use the depth information (z) to adjust the radius
+                     radius = int(5 / (1 + z))  # Adjust the scaling factor as needed
+                     cv2.circle(frame, (x, y), radius, (255, 0, 0), -1)  # Draw a blue circle           # Get recognized hand gestures (you can customize this part)
             for gesture in results.multi_handedness:
                 hand_label = gesture.classification[0].label
                 hand_confidence = gesture.classification[0].score
