@@ -1,45 +1,57 @@
 import cv2
 import mediapipe as mp
 
-class GestureRecognizer:
-    def __init__(self):
-        self.mp_hands = mp.solutions.hands
-        self.hands = self.mp_hands.Hands()
-        self.mp_draw = mp.solutions.drawing_utils
-
-    def recognize(self, image):
-        # Convert the BGR image to RGB.
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # Process the image and get the hand landmarks.
-        results = self.hands.process(image)
-        # Draw the hand landmarks on the image.
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                self.mp_draw.draw_landmarks(image, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
-        return image
+def print_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):
+    print('Gesture recognition result:', result)
 
 def main():
-    # Initialize MediaPipe Gesture Recognizer
-    recognizer = GestureRecognizer()
+    BaseOptions = mp.tasks.BaseOptions
+    GestureRecognizer = mp.tasks.vision.GestureRecognizer
+    GestureRecognizerOptions = mp.tasks.vision.GestureRecognizerOptions
+    VisionRunningMode = mp.tasks.vision.RunningMode
 
-    # OpenCV Video Capture
-    cap = cv2.VideoCapture(0)
+    # Initialize MediaPipe Hands.
+    mp_hands = mp.solutions.hands
+    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    # Initialize MediaPipe DrawingUtils.
+    mp_drawing = mp.solutions.drawing_utils
 
-        # Perform gesture recognition
-        frame = recognizer.recognize(frame)
+    options = GestureRecognizerOptions(
+        base_options=BaseOptions(model_asset_path='gesture_recognizer.task'),
+        running_mode=VisionRunningMode.LIVE_STREAM,
+        result_callback=print_result
+    )
 
-        # Display the frame
-        cv2.imshow('Frame', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+    with GestureRecognizer.create_from_options(options) as recognizer:
+        cap = cv2.VideoCapture(0)
+        while cap.isOpened():
+            success, frame = cap.read()
+            if not success:
+                break
 
-    cap.release()
-    cv2.destroyAllWindows()
+            # Convert the BGR image to RGB before processing.
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            timestamp = int(cap.get(cv2.CAP_PROP_POS_MSEC))
+            recognizer.recognize_async(mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb), timestamp)
+
+            # Process the frame with MediaPipe Hands.
+            results = hands.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+            # Draw hand landmarks on the frame.
+            if results.multi_hand_landmarks:
+                for hand_landmarks in results.multi_hand_landmarks:
+                    mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+            # Display the resulting frame
+            cv2.imshow('Frame', frame)
+
+            # Break the loop on 'q' key press
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        cap.release()
+        cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     main()
