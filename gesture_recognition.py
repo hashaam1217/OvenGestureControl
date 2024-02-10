@@ -2,7 +2,13 @@ import cv2
 import mediapipe as mp
 
 def print_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):
-    print('Gesture recognition result:', result)
+    #print('Gesture recognition result:', result)
+    #print('Gestures:', result.gestures)
+    if result.gestures:
+        for gesture in result.gestures:
+            category_name = gesture[0].category_name
+            score = gesture[0].score
+            print(f'Gesture: {category_name}, Score: {score*100}%')
 
 def main():
     BaseOptions = mp.tasks.BaseOptions
