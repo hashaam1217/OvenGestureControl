@@ -12,7 +12,7 @@ ser.isOpen()
 while 1 :
 
     for i in range(1, 101):
-        number = 6942
+        number = 6123
         str_num = str(number)
         bytes_num = str_num.encode()
         ser.write(bytes_num)
