@@ -1,5 +1,7 @@
 import cv2
 import mediapipe as mp
+import threading
+import time
 
 def print_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):
     #print('Gesture recognition result:', result)
@@ -59,6 +61,28 @@ def main():
         cap.release()
         cv2.destroyAllWindows()
 
-if __name__ == "__main__":
-    main()
+
+#if __name__ == "__main__":
+#    main()
+
+def handle_serial_port():
+    while True:
+        print("Serial port being sent")
+        time.sleep(0.5)
+
+# Creating the threads
+opencv_thread =         threading.Thread(target=main)
+serial_port_thread =    threading.Thread(target=handle_serial_port)
+
+# Starting the threads
+opencv_thread.start()
+serial_port_thread.start()
+
+# Incase both threads end
+opencv_thread.join()
+print("opencv_thread ended")
+serial_port_thread.join()
+print("serial_port_thread ended")
+print("Both threads have ended")
+
 
