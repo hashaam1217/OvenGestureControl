@@ -1,15 +1,16 @@
-from flask import Flask, render_template, Response
 import cv2
 import mediapipe as mp
 import threading
 import time
+import panel as pn
 import numpy as np
+from bokeh.plotting import figure
 
-app = Flask(__name__)
+# Initialize Panel
+pn.extension()
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+# Create a Panel pane to display the frame
+frame_pane = pn.pane.Bokeh()
 
 def print_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):
     if result.gestures:
@@ -18,7 +19,7 @@ def print_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: 
             score = gesture[0].score
             print(f'Gesture: {category_name}, Score: {score*100}%')
 
-def gen():
+def main():
     BaseOptions = mp.tasks.BaseOptions
     GestureRecognizer = mp.tasks.vision.GestureRecognizer
     GestureRecognizerOptions = mp.tasks.vision.GestureRecognizerOptions
@@ -57,27 +58,40 @@ def gen():
                 for hand_landmarks in results.multi_hand_landmarks:
                     mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-            # Create an image with the text
-            text_image = np.zeros((50, frame.shape[1], 3), np.uint8)
-            cv2.putText(text_image, f'Gesture: {category_name}, Score: {score*100}%', (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+            # Convert the frame to a format that can be displayed by Panel
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = np.flip(frame, axis=0)
+            p = figure(x_range=(0, frame.shape[1]), y_range=(0, frame.shape[0]), width=frame.shape[1], height=frame.shape[0])
+            p.image_rgba(image=[cv2.cvtColor(frame, cv2.COLOR_RGB2RGBA)], x=0, y=0, dw=frame.shape[1], dh=frame.shape[0])
+            frame_pane.object = p
 
-            # Stack the text image under the frame
-            frame = np.vstack((frame, text_image))
-
-            # Encode the frame to JPEG
-            ret, jpeg = cv2.imencode('.jpg', frame)
-            frame = jpeg.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+            # Break the loop on 'q' key press
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
         cap.release()
         cv2.destroyAllWindows()
 
-@app.route('/video_feed')
-def video_feed():
-    return Response(gen(),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
+def handle_serial_port():
+    while True:
+        print("Serial port being sent")
+        time.sleep(0.5)
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True, port=5001)
+# Creating the threads
+opencv_thread = threading.Thread(target=main)
+serial_port_thread = threading.Thread(target=handle_serial_port)
+
+# Starting the threads
+opencv_thread.start()
+serial_port_thread.start()
+
+# Incase both threads end
+opencv_thread.join()
+print("opencv_thread ended")
+serial_port_thread.join()
+print("serial_port_thread ended")
+print("Both threads have ended")
+
+# Serve the Panel app
+pn.serve(frame_pane)
 

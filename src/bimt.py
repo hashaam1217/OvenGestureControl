@@ -24,14 +24,32 @@ def print_numbers():
 
 def send_numbers():
     while True:
-        for i in range(1, 5):
-            number = 234
-            number = number + i * 1000
+        for i in range(1, 101):
+            number = 1192
             str_num = str(number)
             bytes_num = str_num.encode()
             ser.write(bytes_num)
             time.sleep(0.005)
             print(f"output: {bytes_num}")
+            number = 2045
+            str_num = str(number)
+            bytes_num = str_num.encode()
+            ser.write(bytes_num)
+            time.sleep(0.005)
+            print(f"output: {bytes_num}")
+            number = 3238
+            str_num = str(number)
+            bytes_num = str_num.encode()
+            ser.write(bytes_num)
+            time.sleep(0.005)
+            print(f"output: {bytes_num}")
+            number = 4040
+            str_num = str(number)
+            bytes_num = str_num.encode()
+            ser.write(bytes_num)
+            time.sleep(0.005)
+            print(f"output: {bytes_num}")
+        time.sleep(1)
 
 # Create threads
 thread2 = threading.Thread(target=send_numbers)
