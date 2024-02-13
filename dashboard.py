@@ -4,19 +4,52 @@ import mediapipe as mp
 import threading
 import time
 import numpy as np
+import math
+from collections import Counter
+
 
 app = Flask(__name__)
+text = "hello"
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
+#def print_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):
+#    if result.gestures:
+#        global text
+#        for gesture in result.gestures:
+#            category_name = gesture[0].category_name
+#            score = gesture[0].score
+#            rounded_num = round(score, 4)
+#            text = f'Score: {100*rounded_num: .2f}%, Gesture: {category_name} '
+#            print(text)
+
+# Global list to store the last ten gestures
+last_ten_gestures = []
+
 def print_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):
+    global last_ten_gestures
+    global text
+    rounded_num = 0  # Define rounded_num here
     if result.gestures:
         for gesture in result.gestures:
             category_name = gesture[0].category_name
             score = gesture[0].score
-            print(f'Gesture: {category_name}, Score: {score*100}%')
+            rounded_num = round(score, 4)  # Update rounded_num here
+
+            # Add the new gesture to the list
+            last_ten_gestures.append(category_name)
+
+            # If there are more than ten gestures in the list, remove the oldest one
+            if len(last_ten_gestures) > 100:
+                last_ten_gestures.pop(0)
+
+    # Find the most common gesture in the last ten gestures
+    counter = Counter(last_ten_gestures)
+    most_common_gesture = counter.most_common(1)[0][0]
+    text = f'Score: {100*rounded_num: .2f}%, Gesture: {most_common_gesture} '
+    print(text)
 
 def gen():
     BaseOptions = mp.tasks.BaseOptions
@@ -59,7 +92,7 @@ def gen():
 
             # Create an image with the text
             text_image = np.zeros((50, frame.shape[1], 3), np.uint8)
-            cv2.putText(text_image, f'Gesture: {category_name}, Score: {score*100}%', (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(text_image, text, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
             # Stack the text image under the frame
             frame = np.vstack((frame, text_image))
