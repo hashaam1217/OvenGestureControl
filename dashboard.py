@@ -8,7 +8,7 @@ import time
 import serial
 from flask_cors import CORS
 
-variables = { 'soakTemp': 0, 'soakTime': 0, 'reflowTemp': 0, 'reflowTime': 0 }
+variables = { 'soakTemp': 0, 'soakTime': 0, 'reflowTemp': 0, 'reflowTime': 0, 'start': 0, 'stop': 0}
 
 # configure the serial port
 ser = serial.Serial(
