@@ -1,116 +1,140 @@
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, request, jsonify
 import cv2
-import mediapipe as mp
+import matplotlib.pyplot as plt
+import numpy as np
+import io
 import threading
 import time
-import numpy as np
-import math
-from collections import Counter
+import serial
+from flask_cors import CORS
 
+variables = { 'soakTemp': 0, 'soakTime': 0, 'reflowTemp': 0, 'reflowTime': 0, 'start': 0, 'stop': 0}
+
+# configure the serial port
+ser = serial.Serial(
+    port='/dev/ttyUSB0',
+    baudrate=115200,
+    parity=serial.PARITY_NONE,
+    stopbits=serial.STOPBITS_ONE,
+    bytesize=serial.EIGHTBITS
+)
+ser.isOpen()
+def control_bit(name):
+    match name:
+        case "soakTemp":
+            return 1000
+        case "soakTime":
+            return 2000
+        case "reflowTemp":
+            return 3000
+        case "reflowTime":
+            return 4000
+
+def print_numbers():
+    while True:
+        strin = ser.readline()
+        byte_string = strin
+        string = byte_string.decode('utf-8')  # Decode the byte string into a regular string
+        string = string.strip()  # Remove the newline character at the end
+        number = int(string)
+        print (f"input: {number}")
+        time.sleep(1)
+
+def send_numbers():
+    print("Hello")
+    while True:
+        #for i in range(1, 101):
+            #number = 1234
+            #str_num = str(number)
+            #bytes_num = str_num.encode()
+            #ser.write(bytes_num)
+            #time.sleep(0.005)
+            #print(f"output: {bytes_num}")
+            #number = 2045
+            #str_num = str(number)
+            #bytes_num = str_num.encode()
+            #ser.write(bytes_num)
+            #time.sleep(0.005)
+            #print(f"output: {bytes_num}")
+            #number = 3238
+            #str_num = str(number)
+            #bytes_num = str_num.encode()
+            #ser.write(bytes_num)
+            #time.sleep(0.005)
+            #print(f"output: {bytes_num}")
+            #number = 4040
+            #str_num = str(number)
+            #bytes_num = str_num.encode()
+            #ser.write(bytes_num)
+            #time.sleep(0.005)
+            #print(f"output: {bytes_num}")
+        #print(number)
+        time.sleep(1)
 
 app = Flask(__name__)
-text = "hello"
-
+CORS(app)
+#Flask server
 @app.route('/')
 def index():
     return render_template('index.html')
 
-#def print_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):
-#    if result.gestures:
-#        global text
-#        for gesture in result.gestures:
-#            category_name = gesture[0].category_name
-#            score = gesture[0].score
-#            rounded_num = round(score, 4)
-#            text = f'Score: {100*rounded_num: .2f}%, Gesture: {category_name} '
-#            print(text)
-
-# Global list to store the last ten gestures
-last_ten_gestures = []
-
-def print_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):
-    global last_ten_gestures
-    global text
-    rounded_num = 0  # Define rounded_num here
-    if result.gestures:
-        for gesture in result.gestures:
-            category_name = gesture[0].category_name
-            score = gesture[0].score
-            rounded_num = round(score, 4)  # Update rounded_num here
-
-            # Add the new gesture to the list
-            last_ten_gestures.append(category_name)
-
-            # If there are more than ten gestures in the list, remove the oldest one
-            if len(last_ten_gestures) > 100:
-                last_ten_gestures.pop(0)
-
-    # Find the most common gesture in the last ten gestures
-    counter = Counter(last_ten_gestures)
-    most_common_gesture = counter.most_common(1)[0][0]
-    text = f'Score: {100*rounded_num: .2f}%, Gesture: {most_common_gesture} '
-    print(text)
-
-def gen():
-    BaseOptions = mp.tasks.BaseOptions
-    GestureRecognizer = mp.tasks.vision.GestureRecognizer
-    GestureRecognizerOptions = mp.tasks.vision.GestureRecognizerOptions
-    VisionRunningMode = mp.tasks.vision.RunningMode
-
-    # Initialize MediaPipe Hands.
-    mp_hands = mp.solutions.hands
-    hands = mp_hands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5, min_tracking_confidence=0.5)
-
-    # Initialize MediaPipe DrawingUtils.
-    mp_drawing = mp.solutions.drawing_utils
-
-    options = GestureRecognizerOptions(
-        base_options=BaseOptions(model_asset_path='gesture_recognizer.task'),
-        running_mode=VisionRunningMode.LIVE_STREAM,
-        result_callback=print_result
-    )
-
-    with GestureRecognizer.create_from_options(options) as recognizer:
-        cap = cv2.VideoCapture(0)
-        while cap.isOpened():
-            success, frame = cap.read()
-            if not success:
-                break
-
-            # Convert the BGR image to RGB before processing.
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            timestamp = int(cap.get(cv2.CAP_PROP_POS_MSEC))
-            recognizer.recognize_async(mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb), timestamp)
-
-            # Process the frame with MediaPipe Hands.
-            results = hands.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-
-            # Draw hand landmarks on the frame.
-            if results.multi_hand_landmarks:
-                for hand_landmarks in results.multi_hand_landmarks:
-                    mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-
-            # Create an image with the text
-            text_image = np.zeros((50, frame.shape[1], 3), np.uint8)
-            cv2.putText(text_image, text, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-
-            # Stack the text image under the frame
-            frame = np.vstack((frame, text_image))
-
-            # Encode the frame to JPEG
-            ret, jpeg = cv2.imencode('.jpg', frame)
-            frame = jpeg.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
-
-        cap.release()
-        cv2.destroyAllWindows()
+#ADD HAND RECOGNITION STUFF HERE
+def generate_camera_feed():
+    cap = cv2.VideoCapture(0)
+    while True:
+        ret, frame = cap.read()
+        ret, jpeg = cv2.imencode('.jpg', frame)
+        frame = jpeg.tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
 
 @app.route('/video_feed')
 def video_feed():
-    return Response(gen(),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(generate_camera_feed(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/plot.png')
+def plot_png():
+    fig, ax = plt.subplots()
+    # Create your plot here
+    output = io.BytesIO()
+    fig.savefig(output, format='png')
+    return Response(output.getvalue(), mimetype='image/png')
+
+@app.route('/update', methods=['POST'])
+def update_files():
+    data = request.get_json()  # Get JSON data from the POST request
+    print(data)
+
+    # Now you can use this data to update your files
+    # For example, let's assume the data is a dictionary with file names and contents
+    for var_name, value in data.items():
+        if var_name in variables:
+            variables[var_name] = int(value)
+            print(var_name)
+            print(variables[var_name])
+
+        for i in range(1, 101):
+            number = variables[var_name]
+            number = number + control_bit(var_name)
+            str_num = str(number)
+            bytes_num = str_num.encode()
+            ser.write(bytes_num)
+            time.sleep(0.005)
+        print(f"output: {bytes_num}")
+    return jsonify({'message': 'Variables updated successfully'}), 200
+
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True, port=5001)
+    flask_thread = threading.Thread(target=app.run, kwargs={'port': 5001})
+    monitor_thread = threading.Thread(target=print_numbers)
+    send_thread = threading.Thread(target=send_numbers)
+    flask_thread.start()
+    monitor_thread.start()
+    send_thread.start()
 
+    send_thread.join()
+    monitor_thread.join()
+    flask_thread.join()
+
+
+    print("end")

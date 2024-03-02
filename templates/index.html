@@ -1,10 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My First Web Page</title>
+    <title>Dashboard</title>
 </head>
 <body>
-    <h1>Welcome to My First Web Page!</h1>
-    <p>This is a simple web page made with HTML.</p>
+    <h1>Dashboard</h1>
+    <img src="{{ url_for('video_feed') }}" alt="Video Feed">
+    <input type="text" id="textbox1" name="textbox1"><br>
+    <input type="text" id="textbox2" name="textbox2"><br>
+    <input type="text" id="textbox3" name="textbox3"><br>
+    <input type="text" id="textbox4" name="textbox4"><br>
+    <button id="button1">Button 1</button>
+    <button id="button2">Button 2</button>
+    <img src="{{ url_for('plot_png') }}" alt="Plot">
 </body>
 </html>
+
