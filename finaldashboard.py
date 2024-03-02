@@ -101,22 +101,26 @@ def print_result(result: mp.tasks.vision.GestureRecognizerResult, output_image: 
             if len(last_twenty) == 50 and len(set(last_twenty)) == 1:
                 if last_twenty[49] == "Open_Palm":
                     print("STOP")
-                    for i in range(1, 201):
+                    for i in range(1, 101):
                         number = 9999
                         str_num = str(number)
                         bytes_num = str_num.encode()
                         ser.write(bytes_num)
                         time.sleep(0.005)
                         print(f"output: {bytes_num}")
+                    time.sleep(10)
+                    return
                 if last_twenty[49] == "Thumb_Up":
                     print("START")
-                    for i in range(1, 201):
+                    for i in range(1, 101):
                         number = 8888
                         str_num = str(number)
                         bytes_num = str_num.encode()
                         ser.write(bytes_num)
                         time.sleep(0.005)
                         print(f"output: {bytes_num}")
+                    time.sleep(10)
+                    return
                 if last_twenty[49] == "Closed_Fist":
                     subprocess.Popen(['/usr/bin/microsoft-edge', url], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     time.sleep(5)
@@ -215,11 +219,7 @@ def update_files():
 if __name__ == '__main__':
     flask_thread = threading.Thread(target=app.run, kwargs={'port': 5001})
     flask_thread.start()
-    monitor_thread.start()
-    send_thread.start()
 
-    send_thread.join()
-    monitor_thread.join()
     flask_thread.join()
 
 
